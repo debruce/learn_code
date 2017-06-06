@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Delete resource &apos;Vor App 2.2 - DVD&apos;" deleteContents="false" description="Delete resource &apos;Vor App 2.2 - DVD&apos;" element1="/Vor App 2.2 - DVD" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1393634744609"/>
+</session>
