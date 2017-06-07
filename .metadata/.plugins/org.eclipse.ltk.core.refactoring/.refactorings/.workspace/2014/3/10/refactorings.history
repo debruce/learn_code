@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">&#x0A;<refactoring comment="Delete resource &apos;VorApp2.4&apos;" deleteContents="true" description="Delete resource &apos;VorApp2.4&apos;" element1="/VorApp2.4" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1393877146854"/>&#x0A;<refactoring comment="Delete resource &apos;Vor App 2.3 - Medical&apos;" deleteContents="false" description="Delete resource &apos;Vor App 2.3 - Medical&apos;" element1="/Vor App 2.3 - Medical" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1394153966362"/>
-</session>

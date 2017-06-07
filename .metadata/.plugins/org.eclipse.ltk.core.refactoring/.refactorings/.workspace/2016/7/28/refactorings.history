@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">&#x0A;<refactoring comment="Delete resource &apos;mat_invert&apos;" deleteContents="true" description="Delete resource &apos;mat_invert&apos;" element1="/mat_invert" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1467956597271"/>&#x0A;<refactoring comment="Delete resource &apos;helloSDL/main&apos;" deleteContents="false" description="Delete resource &apos;helloSDL/main&apos;" element1="/helloSDL/main" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1467957453104"/>
-</session>
