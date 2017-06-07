@@ -10,12 +10,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <FTGL/ftgl.h>
 #include <sys/time.h>
 
 #include <thread>
 #include <mutex>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <unistd.h>
 #include <ctime>
 #include <cmath>
@@ -25,18 +28,6 @@ static void error_callback(int error, const char* description)
 {
 	cerr << description << endl;
 	exit(-1);
-}
-
-float clr = 1.0;
-
-static void worker()
-{
-	for (;;) {
-		sleep(1);
-		clr = .5;
-		sleep(1);
-		clr = 1.0;
-	}
 }
 
 static void wsize_callback(GLFWwindow* window, int x, int y)
@@ -92,6 +83,119 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
 }
 
+class MyFont {
+	FTTextureFont*	font;
+public:
+	enum Pos {
+		LowerLeft,
+		UpperLeft,
+		LowerRight,
+		UpperRight,
+		LowerMiddle,
+		UpperMiddle,
+		Middle
+	};
+
+	MyFont(const string& fname)
+	{
+		string path = "/Library/Fonts/" + fname + ".ttf";
+		font = new FTTextureFont(path.c_str());
+		if (font->Error()) {
+			cerr << "Failed to load font \"" << path << "\"" << endl;
+			exit(-1);
+		}
+		font->FaceSize(24);
+		font->UseDisplayList(true);
+	}
+
+	~MyFont()
+	{
+		delete font;
+	}
+
+	void paint(const string& str, Pos p, float sz, float x, float y, float z = 0)
+	{
+		int mode;
+
+		glGetIntegerv(GL_MATRIX_MODE, &mode);
+
+		FTBBox bbox = font->BBox(str.c_str());
+		sz /= font->FaceSize();
+
+		float xMiddle = .5 * (bbox.Lower().X() + bbox.Upper().X());
+		// float yMiddle = .5 * (bbox.Lower().Y() + bbox.Upper().Y());
+		float yMiddle = .5 * (0 + bbox.Upper().Y());
+
+		FTPoint off;
+		switch (p) {
+		case LowerLeft:
+			// off = FTPoint(-bbox.Lower().X(), -bbox.Lower().Y());
+			off = FTPoint(-bbox.Lower().X(), 0);
+			break;
+		case UpperLeft:
+			off = FTPoint(-bbox.Lower().X(), -bbox.Upper().Y());
+			break;
+		case LowerRight:
+			// off = FTPoint(-bbox.Upper().X(), -bbox.Lower().Y());
+			off = FTPoint(-bbox.Upper().X(), 0);
+			break;
+		case UpperRight:
+			off = FTPoint(-bbox.Upper().X(), -bbox.Upper().Y());
+			break;
+		case LowerMiddle:
+			// off = FTPoint(-xMiddle, -bbox.Lower().Y());
+			off = FTPoint(-xMiddle, 0);
+			break;
+		case UpperMiddle:
+			off = FTPoint(-xMiddle, -bbox.Upper().Y());
+			break;
+		case Middle:
+			off = FTPoint(-xMiddle, -yMiddle);
+			break;
+		};
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+			glTranslatef(x, y, z);
+			glScalef(sz, sz, 1);
+			// glTranslatef(-off.Xf(), -off.Yf(), 0);
+			glPushAttrib(GL_POLYGON_BIT|GL_ENABLE_BIT|GL_CURRENT_BIT);
+			glEnable(GL_TEXTURE_2D);
+			glMatrixMode(GL_TEXTURE);
+			glLoadIdentity();
+			glFrontFace(GL_CCW);
+			font->Render(str.c_str(), -1, off, FTPoint(0,0), FTGL::RENDER_FRONT);
+			glPopAttrib();
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+
+		glMatrixMode(mode);
+	}
+};
+
+void showFontTest(MyFont& font, float left, float right, float bottom, float top)
+{
+	font.paint("lower left", MyFont::LowerLeft, .1, left, bottom);
+	font.paint("upper left", MyFont::UpperLeft, .1, left, top);
+	font.paint("lower right", MyFont::LowerRight, .1, right, bottom);
+	font.paint("upper right", MyFont::UpperRight, .1, right, top);
+	font.paint("lower middle", MyFont::LowerMiddle, .1, 0, bottom);
+	font.paint("upper middle", MyFont::UpperMiddle, .1, 0, top);
+	font.paint("middle", MyFont::Middle, .1, 0, 0);
+}
+
+void showMat4(MyFont& font, const glm::mat4& mat, int width, int prec, float sz, float left, float upper)
+{
+	for (int r = 0; r < 4; r++) {
+		stringstream	ss;
+		ss << fixed << setprecision(prec);
+		for (int c = 0; c < 4; c++) {
+			ss << setw(width) << mat[r][c];
+			if (c != 3) ss << ", ";
+		}
+		font.paint(ss.str(), MyFont::LowerLeft, sz, left, upper-sz*r);
+	}
+}
 
 int main()
 {
@@ -108,11 +212,7 @@ int main()
 
 	glEnable(GL_BLEND);
 
-	FTGLTextureFont font("/Library/Fonts/Zapfino.ttf");
-	float	faceScale = 1/72.0f;
-	font.FaceSize(72);
-
-	thread	t1(worker);
+	MyFont font("Tahoma");
 
 	glfwMakeContextCurrent(window);
     glfwSetWindowSizeCallback(window, wsize_callback);
@@ -128,16 +228,7 @@ int main()
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         ratio = width / (float) height;
-#if 0
-        time_t	now;
-        time(&now);
-        struct tm tm;
-        localtime_r(&now, &tm);
 
-        float hourAngle = tm.tm_hour * (360/12) - 90;
-        float minuteAngle =	tm.tm_min * (360/60) - 90;
-        float secondAngle = tm.tm_sec * (360/60) - 90;
-#endif
         struct timeval tv;
         gettimeofday(&tv, 0);
         double r = (((tv.tv_sec % 10) + tv.tv_usec/1e6)/10.0) * 360.0;
@@ -147,19 +238,15 @@ int main()
         glEnable(GL_DEPTH_TEST);
 
         glMatrixMode(GL_PROJECTION);
-        // glLoadIdentity();
-        // glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-        {
-        	using namespace	glm;
-        	mat4 pm = perspective(60.0*M_PI/180, 640.0/480, .1, 100.0);
-        	pm *= translate(mat4(1.0f), vec3(0.0f, 0.0f, -5));
-        	glLoadMatrixf(value_ptr(pm));
-        }
+        glm::mat4 camera = glm::perspective(60.0*M_PI/180, 640.0/480, .1, 100.0);
+        camera *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5));
+        glLoadMatrixf(glm::value_ptr(camera));
 
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-
         glRotatef(r, .5, .5, 0);
+        glm::mat4 model;
+        glGetFloatv(GL_MODELVIEW_MATRIX, glm::value_ptr(model));
 
        	glColor3f(1, 0, 0);
         glBegin(GL_QUADS);
@@ -188,44 +275,21 @@ int main()
         	glVertex3f(0, 1, 1);
         glEnd();
 
-#if 0
-        glPushMatrix();
-        	glScalef(.1*faceScale,.1*faceScale,1.0f);
-        	glColor3f(clr, 1.0f, 1.0f);
-        	font.Render("Hello World!");
-        glPopMatrix();
+        glDisable(GL_DEPTH_TEST);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-1.5, 1.5, -1.0f, 1.0f, -1.0f, 1.0f);
 
-        glPushMatrix();
-			glRotatef(secondAngle, 0.f, 0.f, -1.f);
-			glBegin(GL_TRIANGLES);
-				glColor3f(.5f, .5f, .5f);
-				glVertex3f(0.f, -0.01f, 0.f);
-				glVertex3f(0.f, 0.01f, 0.f);
-				glColor3f(1.f, 1.f, 1.f);
-				glVertex3f(1.f, 0.f, 0.f);
-			glEnd();
-		glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
 
-        glPushMatrix();
-			glRotatef(minuteAngle, 0.f, 0.f, -1.f);
-			glBegin(GL_TRIANGLES);
-				glColor3f(1.f, .0f, .0f);
-				glVertex3f(0.f, -0.01f, 0.f);
-				glVertex3f(0.f, 0.01f, 0.f);
-				glColor3f(1.f, 1.f, 1.f);
-				glVertex3f(.9f, 0.f, 0.f);
-			glEnd();
-		glPopMatrix();
+        glColor3f(1,1,1);
 
-        glPushMatrix();
-			glRotatef(hourAngle, 0.f, 0.f, -1.f);
-			glBegin(GL_TRIANGLES);
-				glVertex3f(0.f, -0.01f, 0.f);
-				glVertex3f(0.f, 0.01f, 0.f);
-				glVertex3f(.9f, 0.f, 0.f);
-			glEnd();
-		glPopMatrix();
-#endif
+        showFontTest(font, -1.5, 1.5, -1, 1);
+
+        showMat4(font, model, 5, 2, .05, -1.3, .8);
+        showMat4(font, camera, 5, 2, .05, -1.3, .5);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
