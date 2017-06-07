@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <ctime>
 #include <cmath>
+
+#include "MyFont.h"
+
 using namespace std;
 
 static void error_callback(int error, const char* description)
@@ -82,96 +85,6 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     	cout << '<' << hex << key << '>' << endl;
     }
 }
-
-class MyFont {
-	FTTextureFont*	font;
-public:
-	enum Pos {
-		LowerLeft,
-		UpperLeft,
-		LowerRight,
-		UpperRight,
-		LowerMiddle,
-		UpperMiddle,
-		Middle
-	};
-
-	MyFont(const string& fname)
-	{
-		string path = "/Library/Fonts/" + fname + ".ttf";
-		font = new FTTextureFont(path.c_str());
-		if (font->Error()) {
-			cerr << "Failed to load font \"" << path << "\"" << endl;
-			exit(-1);
-		}
-		font->FaceSize(24);
-		font->UseDisplayList(true);
-	}
-
-	~MyFont()
-	{
-		delete font;
-	}
-
-	void paint(const string& str, Pos p, float sz, float x, float y, float z = 0)
-	{
-		int mode;
-
-		glGetIntegerv(GL_MATRIX_MODE, &mode);
-
-		FTBBox bbox = font->BBox(str.c_str());
-		sz /= font->FaceSize();
-
-		float xMiddle = .5 * (bbox.Lower().X() + bbox.Upper().X());
-		// float yMiddle = .5 * (bbox.Lower().Y() + bbox.Upper().Y());
-		float yMiddle = .5 * (0 + bbox.Upper().Y());
-
-		FTPoint off;
-		switch (p) {
-		case LowerLeft:
-			// off = FTPoint(-bbox.Lower().X(), -bbox.Lower().Y());
-			off = FTPoint(-bbox.Lower().X(), 0);
-			break;
-		case UpperLeft:
-			off = FTPoint(-bbox.Lower().X(), -bbox.Upper().Y());
-			break;
-		case LowerRight:
-			// off = FTPoint(-bbox.Upper().X(), -bbox.Lower().Y());
-			off = FTPoint(-bbox.Upper().X(), 0);
-			break;
-		case UpperRight:
-			off = FTPoint(-bbox.Upper().X(), -bbox.Upper().Y());
-			break;
-		case LowerMiddle:
-			// off = FTPoint(-xMiddle, -bbox.Lower().Y());
-			off = FTPoint(-xMiddle, 0);
-			break;
-		case UpperMiddle:
-			off = FTPoint(-xMiddle, -bbox.Upper().Y());
-			break;
-		case Middle:
-			off = FTPoint(-xMiddle, -yMiddle);
-			break;
-		};
-
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-			glTranslatef(x, y, z);
-			glScalef(sz, sz, 1);
-			// glTranslatef(-off.Xf(), -off.Yf(), 0);
-			glPushAttrib(GL_POLYGON_BIT|GL_ENABLE_BIT|GL_CURRENT_BIT);
-			glEnable(GL_TEXTURE_2D);
-			glMatrixMode(GL_TEXTURE);
-			glLoadIdentity();
-			glFrontFace(GL_CCW);
-			font->Render(str.c_str(), -1, off, FTPoint(0,0), FTGL::RENDER_FRONT);
-			glPopAttrib();
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-
-		glMatrixMode(mode);
-	}
-};
 
 void showFontTest(MyFont& font, float left, float right, float bottom, float top)
 {
@@ -287,8 +200,8 @@ int main()
 
         showFontTest(font, -1.5, 1.5, -1, 1);
 
-        showMat4(font, model, 5, 2, .05, -1.3, .8);
-        showMat4(font, camera, 5, 2, .05, -1.3, .5);
+        showMat4(font, model, 5, 2, .07, -1.3, .8);
+        showMat4(font, camera, 5, 2, .07, -1.3, .5);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
