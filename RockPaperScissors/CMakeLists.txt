@@ -12,7 +12,7 @@ find_package(FTGL REQUIRED)
 #find_package(Boost COMPONENTS system REQUIRED)
 #include_directories(${Boost_INCLUDE_DIR})
 
-include_directories(${FREETYPE_INCLUDE_DIRS})
+include_directories(${FREETYPE_INCLUDE_DIRS} ${GLFW_INCLUDE_DIR})
 
 add_definitions(-std=c++14)
 
