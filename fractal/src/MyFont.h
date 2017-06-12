@@ -21,7 +21,8 @@ public:
 
 	~MyFont();
 
-	void paint(const std::string& str, Pos p, float sz, float x, float y, float z = 0);
+	void paint(const std::string& str, Pos p);
+	void paintBackground(const std::string& str, Pos p, const float fg[4], const float bg[4]);
 };
 
 #endif

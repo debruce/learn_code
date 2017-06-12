@@ -6,211 +6,271 @@
 // Description : Hello World in C++, Ansi-style
 //============================================================================
 #define GLFW_INCLUDE_GLU
+#include <FTGL/ftgl.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
-#include <FTGL/ftgl.h>
 #include <sys/time.h>
 
-#include <thread>
-#include <mutex>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <unistd.h>
-#include <ctime>
 #include <cmath>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <sstream>
+#include <thread>
+#include <exception>
+#include <unistd.h>
 
 #include "MyFont.h"
 
 using namespace std;
 
-static void error_callback(int error, const char* description)
-{
-	cerr << description << endl;
-	exit(-1);
+struct Hit {
+	GLuint	count;
+	GLuint	minI;
+	GLuint	maxI;
+	GLuint	names[];
+	float min()	{ return (float)minI / (float)0xffffffff; }
+	float max()	{ return (float)maxI / (float)0xffffffff; }
+	Hit* next()	{ return (Hit*) ( ((GLuint*)this)+count+3); }
+};
+
+static void error_callback(int error, const char *description) {
+  cerr << description << endl;
+  exit(-1);
 }
 
-static void wsize_callback(GLFWwindow* window, int x, int y)
-{
-	cout << "wsize " << x << ' ' << y << endl;
-}
+class BaseGL {
+	GLFWwindow *window;
 
-static void mouse_callback(GLFWwindow* window, int button, int action, int mods)
-{
-	double	x, y;
-	glfwGetCursorPos(window, &x, &y);
-	cout << "mouse x=" << x << " y=" << y << " button=" << button << " action=" << action << " mods=" << mods << endl;
-}
-
-#if 0
-static void cursor_callback(GLFWwindow* window, double x, double y)
-{
-	cout << "cursor " << x << ' ' << y << endl;
-}
-#endif
-
-static void enter_callback(GLFWwindow* window, int ans)
-{
-	double	x, y;
-	glfwGetCursorPos(window, &x, &y);
-	cout << "enter x=" << x << " y=" << y << " ans=" << ans << endl;
-}
-
-static void scroll_callback(GLFWwindow* window, double x, double y)
-{
-	cout << "scroll " << x << ' ' << y << endl;
-}
-
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	double	x, y;
-	glfwGetCursorPos(window, &x, &y);
-
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-        return;
-    }
-
-	cout << "x=" << x << " y=" << y << ' ';
-    if (mods & GLFW_MOD_SHIFT) cout << "shift ";
-    if (mods & GLFW_MOD_CONTROL) cout << "control ";
-    if (mods & GLFW_MOD_ALT) cout << "alt ";
-    if (mods & GLFW_MOD_SUPER) cout << "super ";
-
-    if (isprint(key)) cout << (char)key << endl;
-    else {
-    	cout << '<' << hex << key << '>' << endl;
-    }
-}
-
-void showFontTest(MyFont& font, float left, float right, float bottom, float top)
-{
-	font.paint("lower left", MyFont::LowerLeft, .1, left, bottom);
-	font.paint("upper left", MyFont::UpperLeft, .1, left, top);
-	font.paint("lower right", MyFont::LowerRight, .1, right, bottom);
-	font.paint("upper right", MyFont::UpperRight, .1, right, top);
-	font.paint("lower middle", MyFont::LowerMiddle, .1, 0, bottom);
-	font.paint("upper middle", MyFont::UpperMiddle, .1, 0, top);
-	font.paint("middle", MyFont::Middle, .1, 0, 0);
-}
-
-void showMat4(MyFont& font, const glm::mat4& mat, int width, int prec, float sz, float left, float upper)
-{
-	for (int r = 0; r < 4; r++) {
-		stringstream	ss;
-		ss << fixed << setprecision(prec);
-		for (int c = 0; c < 4; c++) {
-			ss << setw(width) << mat[r][c];
-			if (c != 3) ss << ", ";
+	static void doInit()
+	{
+		static bool done;
+		if (!done) {
+			glfwSetErrorCallback(error_callback);
+			if (!glfwInit()) Exc();
+			done = true;
 		}
-		font.paint(ss.str(), MyFont::LowerLeft, sz, left, upper-sz*r);
 	}
-}
+
+	static void key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
+	{
+		void* ptr = glfwGetWindowUserPointer(wind);
+		double	x, y;
+		glfwGetCursorPos(wind, &x, &y);
+		x *= 2;
+		y *= 2;
+		reinterpret_cast<BaseGL*>(ptr)->keyCallback(key, scancode, action, mods, x, y);
+	}
+
+	static void mouse_callback(GLFWwindow* wind, int button, int action, int mods)
+	{
+		void* ptr = glfwGetWindowUserPointer(wind);
+		double	x, y;
+		glfwGetCursorPos(wind, &x, &y);
+		x *= 2;
+		y *= 2;
+		reinterpret_cast<BaseGL*>(ptr)->mouseCallback(button, action, mods, x, y);
+	}
+public:
+	struct Exc : public runtime_error {
+		Exc() : runtime_error("GLFW") {}
+	};
+
+	BaseGL(int width, int height, const std::string& title)
+	{
+		doInit();
+		window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
+		if (!window) throw Exc();
+		glfwMakeContextCurrent(window);
+		glfwSetWindowUserPointer(window, this);
+		glfwSetKeyCallback(window, key_callback);
+		glfwSetMouseButtonCallback(window, mouse_callback);
+	}
+
+	~BaseGL()
+	{
+		glfwDestroyWindow(window);
+	}
+
+	void setClose()
+	{
+		glfwSetWindowShouldClose(window, GL_TRUE);
+	}
+
+	bool shouldClose()
+	{
+		return glfwWindowShouldClose(window);
+	}
+
+	void getSize(int& width, int& height)
+	{
+		glfwGetFramebufferSize(window, &width, &height);
+	}
+
+	virtual void paint()
+	{
+	}
+
+	virtual void keyCallback(int key, int scancode, int action, int modes, double x, double y)
+	{
+	}
+
+	virtual void mouseCallback(int button, int action, int modes, double x, double y)
+	{
+	}
+
+	void display()
+	{
+		int width, height;
+		glfwGetFramebufferSize(window, &width, &height);
+		glViewport(0, 0, width, height);
+
+		paint();
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+};
+
+struct MyGL : public BaseGL {
+	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
+	{
+	}
+
+	void draw()
+	{
+		double ratio;
+		int width, height;
+		getSize(width, height);
+		ratio = width / (float)height;
+
+		glMatrixMode(GL_PROJECTION);
+		glOrtho(-ratio, ratio, -1.0f, 1.0f, -1.0f, 1.0f);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		glEnable(GL_BLEND);
+
+		glPushName(1);
+		glColor4f(1,0,0,1);
+		glBegin(GL_QUADS);
+			glVertex2f(-ratio, -1);
+			glVertex2f(0, -1);
+			glVertex2f(0, 0);
+			glVertex2f(-ratio, 0);
+		glEnd();
+		glPopName();
+
+		glPushName(2);
+		glColor4f(1,1,0,1);
+		glBegin(GL_QUADS);
+			glVertex2f(-ratio, 0);
+			glVertex2f(0, 0);
+			glVertex2f(0, 1);
+			glVertex2f(-ratio, 1);
+		glEnd();
+		glPopName();
+
+		glPushName(3);
+		glColor4f(0,1,0,1);
+		glBegin(GL_QUADS);
+			glVertex2f(0, 0);
+			glVertex2f(ratio, 0);
+			glVertex2f(ratio, 1);
+			glVertex2f(0, 1);
+		glEnd();
+		glPopName();
+
+		glPushName(4);
+		glColor4f(0,1,1,1);
+		glBegin(GL_QUADS);
+			glVertex2f(0, -1);
+			glVertex2f(ratio, -1);
+			glVertex2f(ratio, 0);
+			glVertex2f(0, 0);
+		glEnd();
+		glPopName();
+
+		glDisable(GL_BLEND);
+	}
+
+	void paint()
+	{
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+
+		draw();
+	}
+
+	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
+	{
+		if (action == GLFW_RELEASE) return;
+
+		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+			setClose();
+			return;
+		}
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+
+		GLint v[4];
+		glGetIntegerv(GL_VIEWPORT, v);
+		glTranslatef(v[2] - 2 * x, -v[3] + 2 * y, 0);
+		glScalef(v[2], v[3], 1.0);
+
+		glInitNames();
+		glPushName(0);
+
+		GLuint selectBuf[1024];
+		memset(selectBuf, 0, sizeof(selectBuf));
+		glSelectBuffer(sizeof(selectBuf)/sizeof(selectBuf[0]), selectBuf);
+
+		glRenderMode(GL_SELECT);
+
+		draw();
+
+		glFlush();
+		int hits = glRenderMode(GL_RENDER);
+		Hit* ptr = (Hit*)selectBuf;
+		cout << "hits=" << hits << endl;
+		for (int i = 0; i < hits; i++) {
+			cout << "\tcount=" << ptr->count << ' ';
+			for (int j = 0; j < ptr->count; j++) {
+				cout << ptr->names[j] << ' ';
+			}
+			cout << endl;
+			ptr = ptr->next();
+		}
+		cout << endl << endl;
+	}
+
+	void mouseCallback(int button, int action, int modes, double x, double y)
+	{
+		cout << "mouse button=" << button << " action=" << action << " x=" << x << " y=" << y << endl;
+	}
+};
 
 int main()
 {
-	glfwSetErrorCallback(error_callback);
+	try {
+		MyGL	myWindow(640, 480, "MyTitle");
 
-	if (!glfwInit())
-	    exit(EXIT_FAILURE);
-
-	GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
-	if (!window) {
-	    glfwTerminate();
-	    exit(EXIT_FAILURE);
+		while (!myWindow.shouldClose()) {
+			myWindow.display();
+		}
 	}
-
-	glEnable(GL_BLEND);
-
-	MyFont font("Tahoma");
-
-	glfwMakeContextCurrent(window);
-    glfwSetWindowSizeCallback(window, wsize_callback);
-    glfwSetMouseButtonCallback(window, mouse_callback);
-    // glfwSetCursorPosCallback(window, cursor_callback);
-    glfwSetCursorEnterCallback(window, enter_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetKeyCallback(window, key_callback);
-
-    while (!glfwWindowShouldClose(window))
-    {
-        float ratio;
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        ratio = width / (float) height;
-
-        struct timeval tv;
-        gettimeofday(&tv, 0);
-        double r = (((tv.tv_sec % 10) + tv.tv_usec/1e6)/10.0) * 360.0;
-        glViewport(0, 0, width, height);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glEnable(GL_DEPTH_TEST);
-
-        glMatrixMode(GL_PROJECTION);
-        glm::mat4 camera = glm::perspective(60.0*M_PI/180, 640.0/480, .1, 100.0);
-        camera *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5));
-        glLoadMatrixf(glm::value_ptr(camera));
-
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glRotatef(r, .5, .5, 0);
-        glm::mat4 model;
-        glGetFloatv(GL_MODELVIEW_MATRIX, glm::value_ptr(model));
-
-       	glColor3f(1, 0, 0);
-        glBegin(GL_QUADS);
-         	glVertex3f(1, 1, 0);
-        	glVertex3f(-1, 1, 0);
-        	glVertex3f(-1, -1, 0);
-        	glVertex3f(1, -1, 0);
-        	glVertex3f(1, 1, 0);
-        glEnd();
-
-       	glColor3f(0, 1, 0);
-        glBegin(GL_QUADS);
-         	glVertex3f(1, 0, 1);
-        	glVertex3f(-1, 0, 1);
-        	glVertex3f(-1, 0, -1);
-        	glVertex3f(1, 0, -1);
-        	glVertex3f(1, 0, 1);
-        glEnd();
-
-       	glColor3f(0, 0, 1);
-        glBegin(GL_QUADS);
-         	glVertex3f(0, 1, 1);
-        	glVertex3f(0, -1, 1);
-        	glVertex3f(0, -1, -1);
-        	glVertex3f(0, 1, -1);
-        	glVertex3f(0, 1, 1);
-        glEnd();
-
-        glDisable(GL_DEPTH_TEST);
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(-1.5, 1.5, -1.0f, 1.0f, -1.0f, 1.0f);
-
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        glColor3f(1,1,1);
-
-        showFontTest(font, -1.5, 1.5, -1, 1);
-
-        showMat4(font, model, 5, 2, .07, -1.3, .8);
-        showMat4(font, camera, 5, 2, .07, -1.3, .5);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-    cout << "after loop" << endl;
-    exit(0);
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	catch (std::exception& exc) {
+		cerr << "Caught exception: " << exc.what() << endl;
+	}
 
 	return 0;
 }
