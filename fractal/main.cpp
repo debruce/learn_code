@@ -24,6 +24,7 @@
 #include <exception>
 #include <unistd.h>
 
+#include "BaseGL.h"
 #include "MyFont.h"
 
 using namespace std;
@@ -36,104 +37,6 @@ struct Hit {
 	float min()	{ return (float)minI / (float)0xffffffff; }
 	float max()	{ return (float)maxI / (float)0xffffffff; }
 	Hit* next()	{ return (Hit*) ( ((GLuint*)this)+count+3); }
-};
-
-static void error_callback(int error, const char *description) {
-  cerr << description << endl;
-  exit(-1);
-}
-
-class BaseGL {
-	GLFWwindow *window;
-
-	static void doInit()
-	{
-		static bool done;
-		if (!done) {
-			glfwSetErrorCallback(error_callback);
-			if (!glfwInit()) Exc();
-			done = true;
-		}
-	}
-
-	static void key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
-	{
-		void* ptr = glfwGetWindowUserPointer(wind);
-		double	x, y;
-		glfwGetCursorPos(wind, &x, &y);
-		x *= 2;
-		y *= 2;
-		reinterpret_cast<BaseGL*>(ptr)->keyCallback(key, scancode, action, mods, x, y);
-	}
-
-	static void mouse_callback(GLFWwindow* wind, int button, int action, int mods)
-	{
-		void* ptr = glfwGetWindowUserPointer(wind);
-		double	x, y;
-		glfwGetCursorPos(wind, &x, &y);
-		x *= 2;
-		y *= 2;
-		reinterpret_cast<BaseGL*>(ptr)->mouseCallback(button, action, mods, x, y);
-	}
-public:
-	struct Exc : public runtime_error {
-		Exc() : runtime_error("GLFW") {}
-	};
-
-	BaseGL(int width, int height, const std::string& title)
-	{
-		doInit();
-		window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
-		if (!window) throw Exc();
-		glfwMakeContextCurrent(window);
-		glfwSetWindowUserPointer(window, this);
-		glfwSetKeyCallback(window, key_callback);
-		glfwSetMouseButtonCallback(window, mouse_callback);
-	}
-
-	~BaseGL()
-	{
-		glfwDestroyWindow(window);
-	}
-
-	void setClose()
-	{
-		glfwSetWindowShouldClose(window, GL_TRUE);
-	}
-
-	bool shouldClose()
-	{
-		return glfwWindowShouldClose(window);
-	}
-
-	void getSize(int& width, int& height)
-	{
-		glfwGetFramebufferSize(window, &width, &height);
-	}
-
-	virtual void paint()
-	{
-	}
-
-	virtual void keyCallback(int key, int scancode, int action, int modes, double x, double y)
-	{
-	}
-
-	virtual void mouseCallback(int button, int action, int modes, double x, double y)
-	{
-	}
-
-	void display()
-	{
-		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
-		glViewport(0, 0, width, height);
-
-		paint();
-
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
 };
 
 struct MyGL : public BaseGL {
