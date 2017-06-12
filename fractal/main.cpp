@@ -59,6 +59,11 @@ struct Patch {
 	}
 };
 
+struct NamePair {
+	float	depth;
+	int	name;
+};
+
 struct MyGL : public BaseGL {
 	vector<Patch>	patches;
 
@@ -105,9 +110,11 @@ struct MyGL : public BaseGL {
 		glDisable(GL_BLEND);
 	}
 
-	int pick(vector<GLuint>& vec, double x, double y)
+	void pick(double x, double y, vector<NamePair>& hits)
 	{
+		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
+
 		setPickView(x, y);
 		glRenderMode(GL_SELECT);
 		glInitNames();
@@ -116,7 +123,17 @@ struct MyGL : public BaseGL {
 		draw();
 
 		glFlush();
-		return glRenderMode(GL_RENDER);
+		int num = glRenderMode(GL_RENDER);
+		hits.clear();
+		Hit* ptr = reinterpret_cast<Hit*>(vec.data());
+		for (int i = 0; i < num; i++) {
+			NamePair p;
+			p.depth = (ptr->min()  + ptr->max()) / 2.0;
+			p.name = ptr->names[1];
+			hits.push_back(p);
+			ptr = ptr->next();
+		}
+		sort(hits.begin(), hits.end(), [](const NamePair& a, const NamePair& b) -> bool { return a.depth < b.depth; });
 	}
 
 	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
@@ -128,9 +145,8 @@ struct MyGL : public BaseGL {
 			return;
 		}
 
-		vector<GLuint>	selectBuf(1024);
-		int hits = pick(selectBuf, x, y);
-		Hit* ptr = (Hit*)selectBuf.data();
+		vector<NamePair>	hits;
+		pick(x, y, hits);
 
 		cout << "keyCallback key=" << key
 			<< " scancode=" << scancode
@@ -139,35 +155,31 @@ struct MyGL : public BaseGL {
 			<< " y=" << y
 			<< endl;
 
-		for (int i = 0; i < hits; i++) {
-			for (int j = 0; j < ptr->count; j++) {
-				cout << ptr->names[j] << ' ';
-			}
-			cout << " min=" << ptr->min() << " max=" << ptr->max() << endl;
-			ptr = ptr->next();
+		for (auto& h : hits) {
+			cout << "depth=" << h.depth <<  " name=" << h.name << endl;
 		}
-		cout << endl << endl;
+		cout << endl;
 	}
 
 	void mouseCallback(int button, int action, int modes, double x, double y)
 	{
 		if (action == GLFW_RELEASE) return;
 
-		vector<GLuint>	selectBuf(1024);
-		int hits = pick(selectBuf, x, y);
-		Hit* ptr = (Hit*)selectBuf.data();
+		vector<NamePair>	hits;
+		pick(x, y, hits);
 
-		for (int i = 0; i < hits; i++) {
-			for (int j = 0; j < ptr->count; j++) {
-				if (ptr->names[j] == -1) continue;
-				for (auto& p : patches) {
-					p.selected = false;
-					if (ptr->names[j] == p.name)
-						p.selected = true;
+		for (auto& p : patches) p.selected = false;
+
+		cout << "mouseCallback button=" << button << " modes=" << modes << endl;
+		for (auto& h : hits) {
+			for (auto& p : patches) {
+				if (p.name == h.name) {
+					p.selected = true;
+					return;
 				}
 			}
-			ptr = ptr->next();
 		}
+
 	}
 };
 
