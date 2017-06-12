@@ -1,28 +1,6 @@
-//============================================================================
-// Name        : myGlfw.cpp
-// Author      : David Bruce
-// Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
-//============================================================================
-#define GLFW_INCLUDE_GLU
-#include <FTGL/ftgl.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <sys/time.h>
-
-#include <cmath>
-#include <ctime>
-#include <iomanip>
 #include <iostream>
-#include <mutex>
-#include <sstream>
-#include <thread>
-#include <exception>
-#include <unistd.h>
+#include <cmath>
+#include <vector>
 
 #include "BaseGL.h"
 #include "MyFont.h"
@@ -39,6 +17,16 @@ struct Hit {
 	Hit* next()	{ return (Hit*) ( ((GLuint*)this)+count+3); }
 };
 
+void rect(float lx, float ux, float ly, float uy)
+{
+	glBegin(GL_QUADS);
+		glVertex2f(lx, ly);
+		glVertex2f(ux, ly);
+		glVertex2f(ux, uy);
+		glVertex2f(lx, uy);
+	glEnd();
+}
+
 struct MyGL : public BaseGL {
 	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
 	{
@@ -46,60 +34,24 @@ struct MyGL : public BaseGL {
 
 	void draw()
 	{
-		double ratio;
-		int width, height;
-		getSize(width, height);
-		ratio = width / (float)height;
+		pushOrtho();
 
-		glMatrixMode(GL_PROJECTION);
-		glOrtho(-ratio, ratio, -1.0f, 1.0f, -1.0f, 1.0f);
+		const int cnt = 20;
 
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		for (int i = 0; i < cnt; i++) {
+			float x = cos(i * M_PI * 2 / cnt);
+			float y = sin(i * M_PI * 2 / cnt);
+			glPushMatrix();
+			glPushName(1+i);
+				glColor4f(.5*x+.5, .2, .5*y+.5, 1);
+				glTranslatef(.5 * x, .5 * y, (float)i/cnt - .5);
+				glScalef(.125, .125, 1);
+				rect(-1, 1, -1, 1);
+			glPopName();
+			glPopMatrix();
+		}
 
-		glEnable(GL_BLEND);
-
-		glPushName(1);
-		glColor4f(1,0,0,1);
-		glBegin(GL_QUADS);
-			glVertex2f(-ratio, -1);
-			glVertex2f(0, -1);
-			glVertex2f(0, 0);
-			glVertex2f(-ratio, 0);
-		glEnd();
-		glPopName();
-
-		glPushName(2);
-		glColor4f(1,1,0,1);
-		glBegin(GL_QUADS);
-			glVertex2f(-ratio, 0);
-			glVertex2f(0, 0);
-			glVertex2f(0, 1);
-			glVertex2f(-ratio, 1);
-		glEnd();
-		glPopName();
-
-		glPushName(3);
-		glColor4f(0,1,0,1);
-		glBegin(GL_QUADS);
-			glVertex2f(0, 0);
-			glVertex2f(ratio, 0);
-			glVertex2f(ratio, 1);
-			glVertex2f(0, 1);
-		glEnd();
-		glPopName();
-
-		glPushName(4);
-		glColor4f(0,1,1,1);
-		glBegin(GL_QUADS);
-			glVertex2f(0, -1);
-			glVertex2f(ratio, -1);
-			glVertex2f(ratio, 0);
-			glVertex2f(0, 0);
-		glEnd();
-		glPopName();
-
-		glDisable(GL_BLEND);
+		popOrtho();
 	}
 
 	void paint()
@@ -110,7 +62,23 @@ struct MyGL : public BaseGL {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 
+		glEnable(GL_BLEND);
 		draw();
+		glDisable(GL_BLEND);
+	}
+
+	int pick(vector<GLuint>& vec, double x, double y)
+	{
+		glSelectBuffer(vec.size(), vec.data());
+		setPickView(x, y);
+		glRenderMode(GL_SELECT);
+		glInitNames();
+		glPushName(0);
+
+		draw();
+
+		glFlush();
+		return glRenderMode(GL_RENDER);
 	}
 
 	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
@@ -122,35 +90,22 @@ struct MyGL : public BaseGL {
 			return;
 		}
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
+		vector<GLuint>	selectBuf(1024);
+		int hits = pick(selectBuf, x, y);
+		Hit* ptr = (Hit*)selectBuf.data();
 
-		GLint v[4];
-		glGetIntegerv(GL_VIEWPORT, v);
-		glTranslatef(v[2] - 2 * x, -v[3] + 2 * y, 0);
-		glScalef(v[2], v[3], 1.0);
+		cout << "keyCallback key=" << key
+			<< " scancode=" << scancode
+			<< " modes=" << modes
+			<< " x=" << x
+			<< " y=" << y
+			<< endl;
 
-		glInitNames();
-		glPushName(0);
-
-		GLuint selectBuf[1024];
-		memset(selectBuf, 0, sizeof(selectBuf));
-		glSelectBuffer(sizeof(selectBuf)/sizeof(selectBuf[0]), selectBuf);
-
-		glRenderMode(GL_SELECT);
-
-		draw();
-
-		glFlush();
-		int hits = glRenderMode(GL_RENDER);
-		Hit* ptr = (Hit*)selectBuf;
-		cout << "hits=" << hits << endl;
 		for (int i = 0; i < hits; i++) {
-			cout << "\tcount=" << ptr->count << ' ';
 			for (int j = 0; j < ptr->count; j++) {
 				cout << ptr->names[j] << ' ';
 			}
-			cout << endl;
+			cout << " min=" << ptr->min() << " max=" << ptr->max() << endl;
 			ptr = ptr->next();
 		}
 		cout << endl << endl;
@@ -158,7 +113,26 @@ struct MyGL : public BaseGL {
 
 	void mouseCallback(int button, int action, int modes, double x, double y)
 	{
-		cout << "mouse button=" << button << " action=" << action << " x=" << x << " y=" << y << endl;
+		if (action == GLFW_RELEASE) return;
+
+		vector<GLuint>	selectBuf(1024);
+		int hits = pick(selectBuf, x, y);
+		Hit* ptr = (Hit*)selectBuf.data();
+
+		cout << "mouseCallback button=" << button
+			<< " modes=" << modes
+			<< " x=" << x
+			<< " y=" << y
+			<< endl;
+
+		for (int i = 0; i < hits; i++) {
+			for (int j = 0; j < ptr->count; j++) {
+				cout << ptr->names[j] << ' ';
+			}
+			cout << " min=" << ptr->min() << " max=" << ptr->max() << endl;
+			ptr = ptr->next();
+		}
+		cout << endl << endl;
 	}
 };
 

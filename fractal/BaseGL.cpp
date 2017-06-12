@@ -27,24 +27,32 @@ void BaseGL::doInit()
 	}
 }
 
+void BaseGL::size_callback(GLFWwindow* wind, int w, int h)
+{
+	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
+	obj->aspect_ = (float)w / h;
+}
+
 void BaseGL::key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
 {
-	void* ptr = glfwGetWindowUserPointer(wind);
+	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
+
 	double	x, y;
 	glfwGetCursorPos(wind, &x, &y);
-	x *= 2;
-	y *= 2;
-	reinterpret_cast<BaseGL*>(ptr)->keyCallback(key, scancode, action, mods, x, y);
+	x *= obj->xscale;
+	y *= obj->yscale;
+	obj->keyCallback(key, scancode, action, mods, x, y);
 }
 
 void BaseGL::mouse_callback(GLFWwindow* wind, int button, int action, int mods)
 {
-	void* ptr = glfwGetWindowUserPointer(wind);
+	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
+
 	double	x, y;
 	glfwGetCursorPos(wind, &x, &y);
-	x *= 2;
-	y *= 2;
-	reinterpret_cast<BaseGL*>(ptr)->mouseCallback(button, action, mods, x, y);
+	x *= obj->xscale;
+	y *= obj->yscale;
+	obj->mouseCallback(button, action, mods, x, y);
 }
 
 BaseGL::BaseGL(int width, int height, const std::string& title)
@@ -55,7 +63,15 @@ BaseGL::BaseGL(int width, int height, const std::string& title)
 	glfwMakeContextCurrent(window);
 	glfwSetWindowUserPointer(window, this);
 	glfwSetKeyCallback(window, key_callback);
+	glfwSetWindowSizeCallback(window, size_callback);
 	glfwSetMouseButtonCallback(window, mouse_callback);
+	int	fwidth, fheight, swidth, sheight;
+	glfwGetWindowSize(window, &swidth, &sheight);
+	glfwGetFramebufferSize(window, &fwidth, &fheight);
+	xscale = (float)fwidth / swidth;
+	yscale = (float)fheight / sheight;
+	aspect_ = (float)fwidth / fheight;
+	orthoSaveMode = -1;
 }
 
 BaseGL::~BaseGL()
@@ -76,6 +92,17 @@ bool BaseGL::shouldClose()
 void BaseGL::getSize(int& width, int& height)
 {
 	glfwGetFramebufferSize(window, &width, &height);
+}
+
+void BaseGL::setPickView(float x, float y)
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	glTranslatef(viewport[2] - 2 * x, -viewport[3] + 2 * y, 0);
+	glScalef(viewport[2], viewport[3], 1.0);
 }
 
 void BaseGL::paint()
@@ -100,4 +127,39 @@ void BaseGL::display()
 
 	glfwSwapBuffers(window);
 	glfwPollEvents();
+}
+
+void BaseGL::pushOrtho()
+{
+	if (orthoSaveMode != -1) {
+		cerr << "pushOrtho called when already set" << endl;
+		exit(-1);
+	}
+
+	glGetIntegerv(GL_MATRIX_MODE, &orthoSaveMode);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glOrtho(-aspect(), aspect(), -1.0f, 1.0f, -1.0f, 1.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+}
+
+void BaseGL::popOrtho()
+{
+	if (orthoSaveMode == -1) {
+		cerr << "popOrtho called when not set" << endl;
+		exit(-1);
+	}
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glMatrixMode(orthoSaveMode);
+	orthoSaveMode = -1;
 }

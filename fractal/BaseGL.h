@@ -7,8 +7,13 @@
 
 class BaseGL {
 	GLFWwindow *window;
+	float	xscale;
+	float	yscale;
+	float	aspect_;
+	int	orthoSaveMode;
 
 	static void doInit();
+	static void size_callback(GLFWwindow* wind, int width, int height);
 	static void key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods);
 	static void mouse_callback(GLFWwindow* wind, int button, int action, int mods);
 public:
@@ -22,10 +27,15 @@ public:
 	void setClose();
 	bool shouldClose();
 	void getSize(int& width, int& height);
+	void setPickView(float x, float y);
 	virtual void paint();
 	virtual void keyCallback(int key, int scancode, int action, int modes, double x, double y);
 	virtual void mouseCallback(int button, int action, int modes, double x, double y);
 	void display();
+
+	float aspect()	const	{ return aspect_; }
+	void pushOrtho();
+	void popOrtho();
 };
 
 #endif
