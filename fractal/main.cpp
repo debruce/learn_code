@@ -17,38 +17,76 @@ struct Hit {
 	Hit* next()	{ return (Hit*) ( ((GLuint*)this)+count+3); }
 };
 
-void rect(float lx, float ux, float ly, float uy)
-{
-	glBegin(GL_QUADS);
-		glVertex2f(lx, ly);
-		glVertex2f(ux, ly);
-		glVertex2f(ux, uy);
-		glVertex2f(lx, uy);
-	glEnd();
-}
+struct Color {
+	float	red;
+	float	green;
+	float	blue;
+	float	alpha;
+};
+
+struct Patch {
+	int	name;
+	float	x;
+	float	y;
+	float	z;
+	bool	selected;
+	Color	color;
+
+	void paint()
+	{
+		glPushMatrix();
+		glPushName(name);
+			if (selected) {
+				Color flip = color;
+				flip.red = 1 - color.red;
+				flip.green = 1 - color.green;
+				flip.blue = 1 - color.blue;
+				glColor4fv((float*)&flip);
+			}
+			else {
+				glColor4fv((float*)&color);
+			}
+			glTranslatef(x, y, z);
+			glScalef(.125, .125, 1);
+			glBegin(GL_QUADS);
+				glVertex2f(-1, -1);
+				glVertex2f(1, -1);
+				glVertex2f(1, 1);
+				glVertex2f(-1, 1);
+			glEnd();
+		glPopName();
+		glPopMatrix();
+	}
+};
 
 struct MyGL : public BaseGL {
+	vector<Patch>	patches;
+
 	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
 	{
+		const int cnt = 20;
+
+		for (int i = 0; i < cnt; i++) {
+			Patch	p;
+			p.name = i;
+			p.x = .5 * cos(i * M_PI * 2 / cnt);
+			p.y = .5 * sin(i * M_PI * 2 / cnt);
+			p.z = (float)i/cnt - .5;
+			p.selected = false;
+			p.color.red = p.x + .5;
+			p.color.green = .2;
+			p.color.blue = p.y + .5;
+			p.color.alpha = 1.0;
+			patches.push_back(p);
+		}
 	}
 
 	void draw()
 	{
 		pushOrtho();
 
-		const int cnt = 20;
-
-		for (int i = 0; i < cnt; i++) {
-			float x = cos(i * M_PI * 2 / cnt);
-			float y = sin(i * M_PI * 2 / cnt);
-			glPushMatrix();
-			glPushName(1+i);
-				glColor4f(.5*x+.5, .2, .5*y+.5, 1);
-				glTranslatef(.5 * x, .5 * y, (float)i/cnt - .5);
-				glScalef(.125, .125, 1);
-				rect(-1, 1, -1, 1);
-			glPopName();
-			glPopMatrix();
+		for (auto& p : patches) {
+			p.paint();
 		}
 
 		popOrtho();
@@ -73,7 +111,7 @@ struct MyGL : public BaseGL {
 		setPickView(x, y);
 		glRenderMode(GL_SELECT);
 		glInitNames();
-		glPushName(0);
+		glPushName(-1);
 
 		draw();
 
@@ -119,20 +157,17 @@ struct MyGL : public BaseGL {
 		int hits = pick(selectBuf, x, y);
 		Hit* ptr = (Hit*)selectBuf.data();
 
-		cout << "mouseCallback button=" << button
-			<< " modes=" << modes
-			<< " x=" << x
-			<< " y=" << y
-			<< endl;
-
 		for (int i = 0; i < hits; i++) {
 			for (int j = 0; j < ptr->count; j++) {
-				cout << ptr->names[j] << ' ';
+				if (ptr->names[j] == -1) continue;
+				for (auto& p : patches) {
+					p.selected = false;
+					if (ptr->names[j] == p.name)
+						p.selected = true;
+				}
 			}
-			cout << " min=" << ptr->min() << " max=" << ptr->max() << endl;
 			ptr = ptr->next();
 		}
-		cout << endl << endl;
 	}
 };
 
