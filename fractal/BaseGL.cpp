@@ -12,6 +12,26 @@
 
 using namespace std;
 
+void BaseObj::select()
+{
+	selectFlag = true;
+}
+
+void BaseObj::deselect()
+{
+	selectFlag = false;
+}
+
+bool BaseObj::keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y)
+{
+	return false;
+}
+
+bool BaseObj::mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y)
+{
+	return false;
+}
+
 static void error_callback(int error, const char *description) {
   cerr << description << endl;
   exit(-1);

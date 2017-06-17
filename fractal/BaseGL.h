@@ -5,6 +5,24 @@
 #include <stdexcept>
 #include <string>
 
+class BaseGL;
+
+class BaseObj {
+	bool	selectFlag;
+public:
+	bool isSelected() const
+	{
+		return selectFlag;
+	}
+
+	virtual void select();
+	virtual void deselect();
+	virtual void draw(BaseGL* wind) = 0;
+
+	virtual bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y);
+	virtual bool mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y);
+};
+
 class BaseGL {
 	GLFWwindow *window;
 	float	xscale;

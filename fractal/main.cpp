@@ -3,19 +3,10 @@
 #include <vector>
 
 #include "BaseGL.h"
+#include "PickStack.h"
 #include "MyFont.h"
 
 using namespace std;
-
-struct Hit {
-	GLuint	count;
-	GLuint	minI;
-	GLuint	maxI;
-	GLuint	names[];
-	float min()	{ return (float)minI / (float)0xffffffff; }
-	float max()	{ return (float)maxI / (float)0xffffffff; }
-	Hit* next()	{ return (Hit*) ( ((GLuint*)this)+count+3); }
-};
 
 struct Color {
 	float	red;
@@ -24,19 +15,17 @@ struct Color {
 	float	alpha;
 };
 
-struct Patch {
-	int	name;
+struct Patch : public BaseObj {
 	float	x;
 	float	y;
 	float	z;
-	bool	selected;
 	Color	color;
 
-	void paint()
+	void draw(BaseGL* wind)
 	{
 		glPushMatrix();
-		glPushName(name);
-			if (selected) {
+		PickStack::push(this);
+			if (isSelected()) {
 				Color flip = color;
 				flip.red = 1 - color.red;
 				flip.green = 1 - color.green;
@@ -54,35 +43,57 @@ struct Patch {
 				glVertex2f(1, 1);
 				glVertex2f(-1, 1);
 			glEnd();
-		glPopName();
+		PickStack::pop();
 		glPopMatrix();
+	}
+
+	bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y)
+	{
+		if (action == GLFW_RELEASE) return true;
+
+		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+			wind.setClose();
+			return true;
+		}
+
+		cout << "keyCallback key=" << key
+			<< " scancode=" << scancode
+			<< " modes=" << modes
+			<< " x=" << x
+			<< " y=" << y
+			<< endl;
+
+		return true;
+	}
+
+	bool mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y)
+	{
+		if (action == GLFW_RELEASE) return true;
+
+		cout << "mouseCallback button=" << button << " modes=" << modes << endl;
+		select();
+		return true;
 	}
 };
 
-struct NamePair {
-	float	depth;
-	int	name;
-};
-
 struct MyGL : public BaseGL {
-	vector<Patch>	patches;
+	vector<BaseObj*>	objs;
 
 	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
 	{
 		const int cnt = 20;
 
 		for (int i = 0; i < cnt; i++) {
-			Patch	p;
-			p.name = i;
-			p.x = .5 * cos(i * M_PI * 2 / cnt);
-			p.y = .5 * sin(i * M_PI * 2 / cnt);
-			p.z = (float)i/cnt - .5;
-			p.selected = false;
-			p.color.red = p.x + .5;
-			p.color.green = .2;
-			p.color.blue = p.y + .5;
-			p.color.alpha = 1.0;
-			patches.push_back(p);
+			Patch*	p = new Patch();;
+			p->x = .5 * cos(i * M_PI * 2 / cnt);
+			p->y = .5 * sin(i * M_PI * 2 / cnt);
+			p->z = (float)i/cnt - .5;
+			p->deselect();
+			p->color.red = p->x + .5;
+			p->color.green = .2;
+			p->color.blue = p->y + .5;
+			p->color.alpha = 1.0;
+			objs.push_back(p);
 		}
 	}
 
@@ -90,9 +101,7 @@ struct MyGL : public BaseGL {
 	{
 		pushOrtho();
 
-		for (auto& p : patches) {
-			p.paint();
-		}
+		for (auto& p : objs) p->draw(dynamic_cast<BaseGL*>(this));
 
 		popOrtho();
 	}
@@ -110,7 +119,34 @@ struct MyGL : public BaseGL {
 		glDisable(GL_BLEND);
 	}
 
-	void pick(double x, double y, vector<NamePair>& hits)
+	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
+	{
+#if 0
+		vector<GLuint>	vec(1024);
+		glSelectBuffer(vec.size(), vec.data());
+
+		setPickView(x, y);
+		glRenderMode(GL_SELECT);
+		glInitNames();
+		glPushName(-1);
+
+		draw();
+
+		glFlush();
+		int num = glRenderMode(GL_RENDER);
+
+		vector<DepthNode> ptrs = pickSort(vec, num);
+
+		for (auto& p : objs) p->deselect();
+
+		for (auto& p : ptrs) {
+			if (reinterpret_cast<BaseObj*>(p.ptr)->keyCallback(*this, key, scancode, action, modes, x, y))
+				return;
+		}
+#endif
+	}
+
+	void mouseCallback(int button, int action, int modes, double x, double y)
 	{
 		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
@@ -124,62 +160,14 @@ struct MyGL : public BaseGL {
 
 		glFlush();
 		int num = glRenderMode(GL_RENDER);
-		hits.clear();
-		Hit* ptr = reinterpret_cast<Hit*>(vec.data());
-		for (int i = 0; i < num; i++) {
-			NamePair p;
-			p.depth = (ptr->min()  + ptr->max()) / 2.0;
-			p.name = ptr->names[1];
-			hits.push_back(p);
-			ptr = ptr->next();
+
+		for (auto& p : objs) p->deselect();
+
+		PickClass<BaseObj>	pick(vec, num);
+		for (size_t i = 0; i < pick.size(); i++) {
+			if (pick[i].mouseCallback(*this, button, action, modes, x, y))
+				return;
 		}
-		sort(hits.begin(), hits.end(), [](const NamePair& a, const NamePair& b) -> bool { return a.depth < b.depth; });
-	}
-
-	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
-	{
-		if (action == GLFW_RELEASE) return;
-
-		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-			setClose();
-			return;
-		}
-
-		vector<NamePair>	hits;
-		pick(x, y, hits);
-
-		cout << "keyCallback key=" << key
-			<< " scancode=" << scancode
-			<< " modes=" << modes
-			<< " x=" << x
-			<< " y=" << y
-			<< endl;
-
-		for (auto& h : hits) {
-			cout << "depth=" << h.depth <<  " name=" << h.name << endl;
-		}
-		cout << endl;
-	}
-
-	void mouseCallback(int button, int action, int modes, double x, double y)
-	{
-		if (action == GLFW_RELEASE) return;
-
-		vector<NamePair>	hits;
-		pick(x, y, hits);
-
-		for (auto& p : patches) p.selected = false;
-
-		cout << "mouseCallback button=" << button << " modes=" << modes << endl;
-		for (auto& h : hits) {
-			for (auto& p : patches) {
-				if (p.name == h.name) {
-					p.selected = true;
-					return;
-				}
-			}
-		}
-
 	}
 };
 
