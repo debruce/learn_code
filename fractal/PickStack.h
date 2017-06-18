@@ -3,88 +3,47 @@
 
 #include <GLFW/glfw3.h>
 #include <vector>
+#include <memory>
 
-struct PickStack {
-	GLuint	count;
-	GLuint	minI;
-	GLuint	maxI;
-	GLuint	names[];
-	float min()	{ return (float)minI / (float)0xffffffff; }
-	float max()	{ return (float)maxI / (float)0xffffffff; }
-	PickStack* next()	{ return (PickStack*) ( ((GLuint*)this)+count+3); }
+class PickVoid {
+	struct impl;
+	std::shared_ptr<impl>	pimpl_;
+public:
+	static void push(void* data);
+	static void pop();
 
-	static void push(void* data)
+	PickVoid(std::vector<GLuint>& vec, int num);
+
+	size_t size() const;
+	void* operator[](size_t i);
+};
+
+template <typename T>
+class PickClass : private PickVoid {
+public:
+	static void push(T* data)
 	{
-		uint64_t shift = (uint64_t) data;
-		glPushName(0x01000000 | (shift & 0xffffff));
-		shift >>= 24;
-		glPushName(0x02000000 | (shift & 0xffffff));
-		shift >>= 24;
-		glPushName(0x03000000 | (shift & 0xffffff));
+		PickVoid::push(data);
 	}
 
 	static void pop()
 	{
-		glPopName();
-		glPopName();
-		glPopName();
+		PickVoid::pop();
 	}
 
-	void* pack()
+	PickClass(std::vector<GLuint>& vec, int num) : PickVoid(vec, num)
 	{
-		uint64_t	shift = 0;
-		for (int j = 0; j < count; j++) {
-			if (names[j] == 0xffffffff) continue;
-			switch (names[j] >> 24) {
-				case 1:
-					shift |= names[j] & 0xffffff;
-					break;
-				case 2:
-					shift |= ((uint64_t)names[j] & 0xffffff) << 24;
-					break;
-				case 3:
-					shift |= ((uint64_t)names[j] & 0xffffff) << 48;
-					break;
-			}
-		}
-		return (void*)shift;
-	}
-};
-
-template <typename T>
-class PickClass {
-	struct DepthNode {
-		float	depth;
-		float	min;
-		float	max;
-		void*	ptr;
-	};
-	std::vector<DepthNode> ret;
-public:
-	PickClass(std::vector<GLuint>& vec, int num)
-	{
-		PickStack* ptr = reinterpret_cast<PickStack*>(vec.data());
-		ret.reserve(num);
-		for (int i = 0; i < num; i++) {
-			DepthNode	n;
-			n.min = ptr->min();
-			n.max = ptr->max();
-			n.depth = .5 * (ptr->min() + ptr->max());
-			n.ptr = ptr->pack();
-			ret.push_back(n);
-			ptr = ptr->next();
-		}
-		sort(ret.begin(), ret.end(), [](const DepthNode& a, const DepthNode& b) -> bool { return a.depth < b.depth; });
 	}
 
 	size_t size() const
 	{
-		return ret.size();
+		return PickVoid::size();
 	}
 
 	T& operator[](size_t i)
 	{
-		return *reinterpret_cast<T*>(ret[i].ptr);
+		return *reinterpret_cast<T*>(PickVoid::operator[](i));
 	}
 };
+
 #endif

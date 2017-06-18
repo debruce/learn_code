@@ -16,5 +16,6 @@ include_directories(${FREETYPE_INCLUDE_DIRS} ${GLFW_INCLUDE_DIR})
 
 add_definitions(--std=c++11)
 
-add_executable(fractal main.cpp MyFont.cpp BaseGL.cpp)
+#add_executable(fractal main.cpp MyFont.cpp BaseGL.cpp)
+add_executable(fractal main.cpp PickStack.cpp MyFont.cpp BaseGL.cpp)
 target_link_libraries(fractal ${FTGL_LIBRARY} ${FREETYPE_LIBRARY} ${GLFW_LIBRARY} ${OPENGL_LIBRARIES})

@@ -15,6 +15,8 @@ struct Color {
 	float	alpha;
 };
 
+typedef PickClass<BaseObj>	PickBaseObj;
+
 struct Patch : public BaseObj {
 	float	x;
 	float	y;
@@ -24,7 +26,7 @@ struct Patch : public BaseObj {
 	void draw(BaseGL* wind)
 	{
 		glPushMatrix();
-		PickStack::push(this);
+		PickBaseObj::push(this);
 			if (isSelected()) {
 				Color flip = color;
 				flip.red = 1 - color.red;
@@ -43,7 +45,7 @@ struct Patch : public BaseObj {
 				glVertex2f(1, 1);
 				glVertex2f(-1, 1);
 			glEnd();
-		PickStack::pop();
+		PickBaseObj::pop();
 		glPopMatrix();
 	}
 
@@ -163,7 +165,7 @@ struct MyGL : public BaseGL {
 
 		for (auto& p : objs) p->deselect();
 
-		PickClass<BaseObj>	pick(vec, num);
+		PickBaseObj	pick(vec, num);
 		for (size_t i = 0; i < pick.size(); i++) {
 			if (pick[i].mouseCallback(*this, button, action, modes, x, y))
 				return;
