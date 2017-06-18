@@ -14,8 +14,10 @@ class BaseGL {
 
 	static void doInit();
 	static void size_callback(GLFWwindow* wind, int width, int height);
-	static void key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods);
-	static void mouse_callback(GLFWwindow* wind, int button, int action, int mods);
+	static void mousebutton_callback(GLFWwindow* wind, int button, int action, int mods);
+	static void keyboard_callback(GLFWwindow* wind, int key, int scancode, int action, int mods);
+	static void cursor_callback(GLFWwindow* wind, double xoff, double yoff);
+	static void scroll_callback(GLFWwindow* wind, double xoff, double yoff);
 public:
 	struct Exc : public std::runtime_error {
 		Exc() : std::runtime_error("GLFW") {};
@@ -29,9 +31,14 @@ public:
 	void getSize(int& width, int& height) const;
 	void getCursor(double& x, double& y) const;
 	void setPickView(float x, float y);
+	void useCursor(bool);
+	void useScroll(bool);
+
 	virtual void paint();
-	virtual void keyCallback(int key, int scancode, int action, int modes);
-	virtual void mouseCallback(int button, int action, int modes);
+	virtual void mouseButtonCallback(int button, int action, int modes);
+	virtual void keyboardCallback(int key, int scancode, int action, int modes);
+	virtual void cursorCallback(double x, double y);
+	virtual void scrollCallback(double xoff, double yoff);
 	void display();
 
 	float aspect()	const	{ return aspect_; }
@@ -51,8 +58,8 @@ public:
 	virtual void deselect();
 	virtual void draw(BaseGL* wind) = 0;
 
-	virtual bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes);
-	virtual bool mouseCallback(BaseGL& wind, int button, int action, int modes);
+	virtual bool mouseButtonCallback(BaseGL& wind, int button, int action, int modes);
+	virtual bool keyboardCallback(BaseGL& wind, int key, int scancode, int action, int modes);
 };
 
 #endif

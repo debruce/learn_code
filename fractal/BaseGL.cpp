@@ -33,16 +33,28 @@ void BaseGL::size_callback(GLFWwindow* wind, int w, int h)
 	obj->aspect_ = (float)w / h;
 }
 
-void BaseGL::key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
+void BaseGL::mousebutton_callback(GLFWwindow* wind, int button, int action, int mods)
 {
 	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
-	obj->keyCallback(key, scancode, action, mods);
+	obj->mouseButtonCallback(button, action, mods);
 }
 
-void BaseGL::mouse_callback(GLFWwindow* wind, int button, int action, int mods)
+void BaseGL::keyboard_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
 {
 	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
-	obj->mouseCallback(button, action, mods);
+	obj->keyboardCallback(key, scancode, action, mods);
+}
+
+void BaseGL::cursor_callback(GLFWwindow* wind, double x, double y)
+{
+	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
+	obj->cursorCallback(x, y);
+}
+
+void BaseGL::scroll_callback(GLFWwindow* wind, double xoff, double yoff)
+{
+	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
+	obj->scrollCallback(xoff, yoff);
 }
 
 BaseGL::BaseGL(int width, int height, const std::string& title)
@@ -52,9 +64,11 @@ BaseGL::BaseGL(int width, int height, const std::string& title)
 	if (!window) throw Exc();
 	glfwMakeContextCurrent(window);
 	glfwSetWindowUserPointer(window, this);
-	glfwSetKeyCallback(window, key_callback);
+
 	glfwSetWindowSizeCallback(window, size_callback);
-	glfwSetMouseButtonCallback(window, mouse_callback);
+	glfwSetMouseButtonCallback(window, mousebutton_callback);
+	glfwSetKeyCallback(window, keyboard_callback);
+
 	int	fwidth, fheight, swidth, sheight;
 	glfwGetWindowSize(window, &swidth, &sheight);
 	glfwGetFramebufferSize(window, &fwidth, &fheight);
@@ -102,15 +116,33 @@ void BaseGL::setPickView(float x, float y)
 	glScalef(viewport[2], viewport[3], 1.0);
 }
 
+void BaseGL::useCursor(bool take)
+{
+	glfwSetCursorPosCallback(window, take ? cursor_callback : NULL);
+}
+
+void BaseGL::useScroll(bool take)
+{
+	glfwSetScrollCallback(window, take ? scroll_callback : NULL);
+}
+
 void BaseGL::paint()
 {
 }
 
-void BaseGL::keyCallback(int key, int scancode, int action, int modes)
+void BaseGL::mouseButtonCallback(int button, int action, int modes)
 {
 }
 
-void BaseGL::mouseCallback(int button, int action, int modes)
+void BaseGL::keyboardCallback(int key, int scancode, int action, int modes)
+{
+}
+
+void BaseGL::cursorCallback(double x, double y)
+{
+}
+
+void BaseGL::scrollCallback(double xoff, double yoff)
 {
 }
 
@@ -171,12 +203,12 @@ void BaseObj::deselect()
 	selectFlag = false;
 }
 
-bool BaseObj::keyCallback(BaseGL& wind, int key, int scancode, int action, int modes)
+bool BaseObj::mouseButtonCallback(BaseGL& wind, int button, int action, int modes)
 {
 	return false;
 }
 
-bool BaseObj::mouseCallback(BaseGL& wind, int button, int action, int modes)
+bool BaseObj::keyboardCallback(BaseGL& wind, int key, int scancode, int action, int modes)
 {
 	return false;
 }

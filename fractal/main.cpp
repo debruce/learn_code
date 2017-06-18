@@ -49,7 +49,7 @@ struct Patch : public BaseObj {
 		glPopMatrix();
 	}
 
-	bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes)
+	bool keyboardCallback(BaseGL& wind, int key, int scancode, int action, int modes)
 	{
 		if (action == GLFW_RELEASE) return true;
 
@@ -66,7 +66,7 @@ struct Patch : public BaseObj {
 		return true;
 	}
 
-	bool mouseCallback(BaseGL& wind, int button, int action, int modes)
+	bool mouseButtonCallback(BaseGL& wind, int button, int action, int modes)
 	{
 		if (action == GLFW_RELEASE) return true;
 
@@ -95,6 +95,9 @@ struct MyGL : public BaseGL {
 			p->color.alpha = 1.0;
 			objs.push_back(p);
 		}
+
+		useCursor(true);
+		useScroll(true);
 	}
 
 	void draw()
@@ -119,34 +122,7 @@ struct MyGL : public BaseGL {
 		glDisable(GL_BLEND);
 	}
 
-	void keyCallback(int key, int scancode, int action, int modes)
-	{
-#if 0
-		vector<GLuint>	vec(1024);
-		glSelectBuffer(vec.size(), vec.data());
-
-		setPickView(x, y);
-		glRenderMode(GL_SELECT);
-		glInitNames();
-		glPushName(-1);
-
-		draw();
-
-		glFlush();
-		int num = glRenderMode(GL_RENDER);
-
-		vector<DepthNode> ptrs = pickSort(vec, num);
-
-		for (auto& p : objs) p->deselect();
-
-		for (auto& p : ptrs) {
-			if (reinterpret_cast<BaseObj*>(p.ptr)->keyCallback(*this, key, scancode, action, modes, x, y))
-				return;
-		}
-#endif
-	}
-
-	void mouseCallback(int button, int action, int modes)
+	void mouseButtonCallback(int button, int action, int modes)
 	{
 		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
@@ -167,9 +143,43 @@ struct MyGL : public BaseGL {
 
 		PickBaseObj	pick(vec, num);
 		for (size_t i = 0; i < pick.size(); i++) {
-			if (pick[i].mouseCallback(*this, button, action, modes))
+			if (pick[i].mouseButtonCallback(*this, button, action, modes))
 				return;
 		}
+	}
+
+	void keyboardCallback(int key, int scancode, int action, int modes)
+	{
+		vector<GLuint>	vec(1024);
+		glSelectBuffer(vec.size(), vec.data());
+
+		double x, y;
+		getCursor(x, y);
+		setPickView(x, y);
+		glRenderMode(GL_SELECT);
+		glInitNames();
+		glPushName(-1);
+
+		draw();
+
+		glFlush();
+		int num = glRenderMode(GL_RENDER);
+
+		PickBaseObj	pick(vec, num);
+		for (size_t i = 0; i < pick.size(); i++) {
+			if (pick[i].keyboardCallback(*this, key, scancode, action, modes))
+				return;
+		}
+	}
+
+	void cursorCallback(double x, double y)
+	{
+		cout << "cursor x=" << x << " y=" << y << endl;
+	}
+
+	void scrollCallback(double x, double y)
+	{
+		cout << "scroll x=" << x << " y=" << y << endl;
 	}
 };
 
