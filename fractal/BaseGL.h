@@ -11,6 +11,7 @@ class BaseGL {
 	float	yscale;
 	float	aspect_;
 	int	orthoSaveMode;
+	static GLFWcursor*	handCursor;
 
 	static void doInit();
 	static void size_callback(GLFWwindow* wind, int width, int height);
@@ -33,6 +34,7 @@ public:
 	void setPickView(float x, float y);
 	void useCursor(bool);
 	void useScroll(bool);
+	void useHand(bool);
 
 	virtual void paint();
 	virtual void mouseButtonCallback(int button, int action, int modes);

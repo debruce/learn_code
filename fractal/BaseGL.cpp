@@ -17,12 +17,17 @@ static void error_callback(int error, const char *description) {
   exit(-1);
 }
 
+GLFWcursor* BaseGL::handCursor;
+
 void BaseGL::doInit()
 {
 	static bool done;
 	if (!done) {
 		glfwSetErrorCallback(error_callback);
 		if (!glfwInit()) Exc();
+
+		handCursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+
 		done = true;
 	}
 }
@@ -124,6 +129,11 @@ void BaseGL::useCursor(bool take)
 void BaseGL::useScroll(bool take)
 {
 	glfwSetScrollCallback(window, take ? scroll_callback : NULL);
+}
+
+void BaseGL::useHand(bool hand)
+{
+	glfwSetCursor(window, hand ? handCursor : NULL);
 }
 
 void BaseGL::paint()

@@ -150,6 +150,16 @@ struct MyGL : public BaseGL {
 
 	void keyboardCallback(int key, int scancode, int action, int modes)
 	{
+		cout << "main keyCallback key=" << key
+			<< " scancode=" << scancode
+			<< " modes=" << modes
+			<< endl;
+
+		if (key == 344) {
+			if (modes == 1) useHand(true);
+			else useHand(false);
+		}
+
 		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
 
