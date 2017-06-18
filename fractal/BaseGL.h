@@ -5,24 +5,6 @@
 #include <stdexcept>
 #include <string>
 
-class BaseGL;
-
-class BaseObj {
-	bool	selectFlag;
-public:
-	bool isSelected() const
-	{
-		return selectFlag;
-	}
-
-	virtual void select();
-	virtual void deselect();
-	virtual void draw(BaseGL* wind) = 0;
-
-	virtual bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y);
-	virtual bool mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y);
-};
-
 class BaseGL {
 	GLFWwindow *window;
 	float	xscale;
@@ -44,16 +26,33 @@ public:
 
 	void setClose();
 	bool shouldClose();
-	void getSize(int& width, int& height);
+	void getSize(int& width, int& height) const;
+	void getCursor(double& x, double& y) const;
 	void setPickView(float x, float y);
 	virtual void paint();
-	virtual void keyCallback(int key, int scancode, int action, int modes, double x, double y);
-	virtual void mouseCallback(int button, int action, int modes, double x, double y);
+	virtual void keyCallback(int key, int scancode, int action, int modes);
+	virtual void mouseCallback(int button, int action, int modes);
 	void display();
 
 	float aspect()	const	{ return aspect_; }
 	void pushOrtho();
 	void popOrtho();
+};
+
+class BaseObj {
+	bool	selectFlag;
+public:
+	bool isSelected() const
+	{
+		return selectFlag;
+	}
+
+	virtual void select();
+	virtual void deselect();
+	virtual void draw(BaseGL* wind) = 0;
+
+	virtual bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes);
+	virtual bool mouseCallback(BaseGL& wind, int button, int action, int modes);
 };
 
 #endif

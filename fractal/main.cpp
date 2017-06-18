@@ -49,7 +49,7 @@ struct Patch : public BaseObj {
 		glPopMatrix();
 	}
 
-	bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y)
+	bool keyCallback(BaseGL& wind, int key, int scancode, int action, int modes)
 	{
 		if (action == GLFW_RELEASE) return true;
 
@@ -61,14 +61,12 @@ struct Patch : public BaseObj {
 		cout << "keyCallback key=" << key
 			<< " scancode=" << scancode
 			<< " modes=" << modes
-			<< " x=" << x
-			<< " y=" << y
 			<< endl;
 
 		return true;
 	}
 
-	bool mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y)
+	bool mouseCallback(BaseGL& wind, int button, int action, int modes)
 	{
 		if (action == GLFW_RELEASE) return true;
 
@@ -121,7 +119,7 @@ struct MyGL : public BaseGL {
 		glDisable(GL_BLEND);
 	}
 
-	void keyCallback(int key, int scancode, int action, int modes, double x, double y)
+	void keyCallback(int key, int scancode, int action, int modes)
 	{
 #if 0
 		vector<GLuint>	vec(1024);
@@ -148,11 +146,13 @@ struct MyGL : public BaseGL {
 #endif
 	}
 
-	void mouseCallback(int button, int action, int modes, double x, double y)
+	void mouseCallback(int button, int action, int modes)
 	{
 		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
 
+		double x, y;
+		getCursor(x, y);
 		setPickView(x, y);
 		glRenderMode(GL_SELECT);
 		glInitNames();
@@ -167,7 +167,7 @@ struct MyGL : public BaseGL {
 
 		PickBaseObj	pick(vec, num);
 		for (size_t i = 0; i < pick.size(); i++) {
-			if (pick[i].mouseCallback(*this, button, action, modes, x, y))
+			if (pick[i].mouseCallback(*this, button, action, modes))
 				return;
 		}
 	}

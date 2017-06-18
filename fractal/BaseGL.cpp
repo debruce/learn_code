@@ -12,26 +12,6 @@
 
 using namespace std;
 
-void BaseObj::select()
-{
-	selectFlag = true;
-}
-
-void BaseObj::deselect()
-{
-	selectFlag = false;
-}
-
-bool BaseObj::keyCallback(BaseGL& wind, int key, int scancode, int action, int modes, double x, double y)
-{
-	return false;
-}
-
-bool BaseObj::mouseCallback(BaseGL& wind, int button, int action, int modes, double x, double y)
-{
-	return false;
-}
-
 static void error_callback(int error, const char *description) {
   cerr << description << endl;
   exit(-1);
@@ -56,23 +36,13 @@ void BaseGL::size_callback(GLFWwindow* wind, int w, int h)
 void BaseGL::key_callback(GLFWwindow* wind, int key, int scancode, int action, int mods)
 {
 	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
-
-	double	x, y;
-	glfwGetCursorPos(wind, &x, &y);
-	x *= obj->xscale;
-	y *= obj->yscale;
-	obj->keyCallback(key, scancode, action, mods, x, y);
+	obj->keyCallback(key, scancode, action, mods);
 }
 
 void BaseGL::mouse_callback(GLFWwindow* wind, int button, int action, int mods)
 {
 	BaseGL* obj = reinterpret_cast<BaseGL*>(glfwGetWindowUserPointer(wind));
-
-	double	x, y;
-	glfwGetCursorPos(wind, &x, &y);
-	x *= obj->xscale;
-	y *= obj->yscale;
-	obj->mouseCallback(button, action, mods, x, y);
+	obj->mouseCallback(button, action, mods);
 }
 
 BaseGL::BaseGL(int width, int height, const std::string& title)
@@ -109,9 +79,16 @@ bool BaseGL::shouldClose()
 	return glfwWindowShouldClose(window);
 }
 
-void BaseGL::getSize(int& width, int& height)
+void BaseGL::getSize(int& width, int& height) const
 {
 	glfwGetFramebufferSize(window, &width, &height);
+}
+
+void BaseGL::getCursor(double& x, double& y) const
+{
+	glfwGetCursorPos(window, &x, &y);
+	x *= xscale;
+	y *= yscale;
 }
 
 void BaseGL::setPickView(float x, float y)
@@ -129,11 +106,11 @@ void BaseGL::paint()
 {
 }
 
-void BaseGL::keyCallback(int key, int scancode, int action, int modes, double x, double y)
+void BaseGL::keyCallback(int key, int scancode, int action, int modes)
 {
 }
 
-void BaseGL::mouseCallback(int button, int action, int modes, double x, double y)
+void BaseGL::mouseCallback(int button, int action, int modes)
 {
 }
 
@@ -182,4 +159,24 @@ void BaseGL::popOrtho()
 
 	glMatrixMode(orthoSaveMode);
 	orthoSaveMode = -1;
+}
+
+void BaseObj::select()
+{
+	selectFlag = true;
+}
+
+void BaseObj::deselect()
+{
+	selectFlag = false;
+}
+
+bool BaseObj::keyCallback(BaseGL& wind, int key, int scancode, int action, int modes)
+{
+	return false;
+}
+
+bool BaseObj::mouseCallback(BaseGL& wind, int button, int action, int modes)
+{
+	return false;
 }
