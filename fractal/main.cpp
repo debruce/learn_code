@@ -1,7 +1,14 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <sys/time.h>
+#if 0
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#endif
 
+#define GLFW_INCLUDE_GLU
 #include "BaseGL.h"
 #include "PickStack.h"
 #include "MyFont.h"
@@ -78,6 +85,7 @@ struct Patch : public BaseObj {
 
 struct MyGL : public BaseGL {
 	vector<BaseObj*>	objs;
+	GLUquadric*	sphere;
 
 	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
 	{
@@ -96,12 +104,55 @@ struct MyGL : public BaseGL {
 			objs.push_back(p);
 		}
 
-		useCursor(true);
-		useScroll(true);
+		sphere = gluNewQuadric();
+		// useCursor(true);
+		// useScroll(true);
 	}
 
 	void draw()
 	{
+		struct timeval	tv;
+		gettimeofday(&tv, 0);
+		double t = ((tv.tv_sec % 10) + (double)(tv.tv_usec / 1e6)) / 10.0;
+
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		glFrustum(-4*aspect(), 4*aspect(), -4, 4, 4, 40);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glTranslatef(0,0,-5);
+		glRotatef(t * 360.0, 1, 1, 1);
+
+			glColor4f(.25,.25,.25,1);
+			gluQuadricDrawStyle(sphere, GLU_FILL);
+			gluSphere(sphere, 1, 10, 10);
+
+			glColor4f(1,1,1,1);
+			gluQuadricDrawStyle(sphere, GLU_LINE);
+			gluSphere(sphere, 1, 10, 10);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+#if 0
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+		gluLookAt(1, 1, 1, 0, 0, 0, 0, 0, 1);
+
+			glColor4f(1,1,1,1);
+			gluQuadricDrawStyle(sphere, GLU_LINE);
+			gluSphere(sphere, .1, 10, 10);
+
+		glPopMatrix();
+
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+#endif
 		pushOrtho();
 
 		for (auto& p : objs) p->draw(dynamic_cast<BaseGL*>(this));
@@ -150,11 +201,6 @@ struct MyGL : public BaseGL {
 
 	void keyboardCallback(int key, int scancode, int action, int modes)
 	{
-		cout << "main keyCallback key=" << key
-			<< " scancode=" << scancode
-			<< " modes=" << modes
-			<< endl;
-
 		if (key == 344) {
 			if (modes == 1) useHand(true);
 			else useHand(false);
