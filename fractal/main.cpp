@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <string>
 #include <sys/time.h>
 #if 0
 #include <glm/glm.hpp>
@@ -15,96 +16,101 @@
 
 using namespace std;
 
-struct Color {
-	float	red;
-	float	green;
-	float	blue;
-	float	alpha;
-};
-
 typedef PickClass<BaseObj>	PickBaseObj;
 
-struct Patch : public BaseObj {
-	float	x;
-	float	y;
-	float	z;
-	Color	color;
+MyFont	*font;
+
+class IntegerEntry : public BaseObj {
+	string	data;
+	MyFont::Pos	pos;
+public:
+	IntegerEntry(const string& def, MyFont::Pos pos_)
+	{
+		data = def;
+		pos = pos_;
+	}
 
 	void draw(BaseGL* wind)
 	{
-		glPushMatrix();
 		PickBaseObj::push(this);
-			if (isSelected()) {
-				Color flip = color;
-				flip.red = 1 - color.red;
-				flip.green = 1 - color.green;
-				flip.blue = 1 - color.blue;
-				glColor4fv((float*)&flip);
-			}
-			else {
-				glColor4fv((float*)&color);
-			}
-			glTranslatef(x, y, z);
-			glScalef(.125, .125, 1);
-			glBegin(GL_QUADS);
-				glVertex2f(-1, -1);
-				glVertex2f(1, -1);
-				glVertex2f(1, 1);
-				glVertex2f(-1, 1);
-			glEnd();
+		float fg[] = {1, 1, 1, 1};
+		float bg[] = {.25, .25, .25, 1};
+		float hl[] = {.5, 0, 0, 1};
+		// font->paintBackground(data, pos, fg, bg);
+		font->paintHighlight(data, pos, fg, bg, 9, hl);
+		// font->paint(data, pos);
 		PickBaseObj::pop();
-		glPopMatrix();
 	}
 
-	bool keyboardCallback(BaseGL& wind, int key, int scancode, int action, int modes)
+	bool keyboardCallback(BaseGL& wind, int key, int scancode, int action, int mods)
 	{
 		if (action == GLFW_RELEASE) return true;
+		cout << "keyboardCallback ";
+		if (mods & GLFW_MOD_SHIFT) cout << "shift ";
+		if (mods & GLFW_MOD_CONTROL) cout << "control ";
+		if (mods & GLFW_MOD_ALT) cout << "alt ";
+		if (mods & GLFW_MOD_SUPER) cout << "super ";
+		switch (key) {
+			case GLFW_KEY_0:
+				cout << "zero";
+				break;
+			case GLFW_KEY_1:
+				cout << "one";
+				break;
+			case GLFW_KEY_2:
+				cout << "two";
+				break;
+			case GLFW_KEY_3:
+				cout << "three";
+				break;
+			case GLFW_KEY_4:
+				cout << "four";
+				break;
+			case GLFW_KEY_5:
+				cout << "five";
+				break;
+			case GLFW_KEY_6:
+				cout << "six";
+				break;
+			case GLFW_KEY_7:
+				cout << "seven";
+				break;
+			case GLFW_KEY_8:
+				cout << "eight";
+				break;
+			case GLFW_KEY_9:
+				cout << "nine";
+				break;
+			case GLFW_KEY_LEFT:
+				cout << "left";
+				break;
+			case GLFW_KEY_RIGHT:
+				cout << "right";
+				break;
+			case GLFW_KEY_UP:
+				cout << "up";
+				break;
+			case GLFW_KEY_DOWN:
+				cout << "down";
+				break;
 
-		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-			wind.setClose();
-			return true;
+			default:
+				cout << "key=" << dec << key;
+				break;
 		}
-
-		cout << "keyCallback key=" << key
-			<< " scancode=" << scancode
-			<< " modes=" << modes
-			<< endl;
-
-		return true;
-	}
-
-	bool mouseButtonCallback(BaseGL& wind, int button, int action, int modes)
-	{
-		if (action == GLFW_RELEASE) return true;
-
-		cout << "mouseCallback button=" << button << " modes=" << modes << endl;
-		select();
+		cout << endl;
 		return true;
 	}
 };
 
 struct MyGL : public BaseGL {
-	vector<BaseObj*>	objs;
 	GLUquadric*	sphere;
+	IntegerEntry*	str;
 
 	MyGL(int width, int height, const std::string& title) : BaseGL(width, height, title)
 	{
-		const int cnt = 20;
-
-		for (int i = 0; i < cnt; i++) {
-			Patch*	p = new Patch();;
-			p->x = .5 * cos(i * M_PI * 2 / cnt);
-			p->y = .5 * sin(i * M_PI * 2 / cnt);
-			p->z = (float)i/cnt - .5;
-			p->deselect();
-			p->color.red = p->x + .5;
-			p->color.green = .2;
-			p->color.blue = p->y + .5;
-			p->color.alpha = 1.0;
-			objs.push_back(p);
-		}
-
 		sphere = gluNewQuadric();
+		str = new IntegerEntry("upper left", MyFont::UpperLeft);
 		// useCursor(true);
 		// useScroll(true);
 	}
@@ -138,24 +144,15 @@ struct MyGL : public BaseGL {
 
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
-#if 0
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-		glLoadIdentity();
-		gluLookAt(1, 1, 1, 0, 0, 0, 0, 0, 1);
 
-			glColor4f(1,1,1,1);
-			gluQuadricDrawStyle(sphere, GLU_LINE);
-			gluSphere(sphere, .1, 10, 10);
-
-		glPopMatrix();
-
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-#endif
 		pushOrtho();
 
-		for (auto& p : objs) p->draw(dynamic_cast<BaseGL*>(this));
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+			glTranslatef(-aspect(), 1, 0);
+			glScalef(.1, .1, 1);
+			str->draw(this);
+		glPopMatrix();
 
 		popOrtho();
 	}
@@ -173,7 +170,7 @@ struct MyGL : public BaseGL {
 		glDisable(GL_BLEND);
 	}
 
-	void mouseButtonCallback(int button, int action, int modes)
+	void mouseButtonCallback(int button, int action, int mods)
 	{
 		vector<GLuint>	vec(1024);
 		glSelectBuffer(vec.size(), vec.data());
@@ -190,19 +187,17 @@ struct MyGL : public BaseGL {
 		glFlush();
 		int num = glRenderMode(GL_RENDER);
 
-		for (auto& p : objs) p->deselect();
-
 		PickBaseObj	pick(vec, num);
 		for (size_t i = 0; i < pick.size(); i++) {
-			if (pick[i].mouseButtonCallback(*this, button, action, modes))
+			if (pick[i].mouseButtonCallback(*this, button, action, mods))
 				return;
 		}
 	}
 
-	void keyboardCallback(int key, int scancode, int action, int modes)
+	void keyboardCallback(int key, int scancode, int action, int mods)
 	{
 		if (key == 344) {
-			if (modes == 1) useHand(true);
+			if (mods == 1) useHand(true);
 			else useHand(false);
 		}
 
@@ -223,7 +218,7 @@ struct MyGL : public BaseGL {
 
 		PickBaseObj	pick(vec, num);
 		for (size_t i = 0; i < pick.size(); i++) {
-			if (pick[i].keyboardCallback(*this, key, scancode, action, modes))
+			if (pick[i].keyboardCallback(*this, key, scancode, action, mods))
 				return;
 		}
 	}
@@ -243,6 +238,7 @@ int main()
 {
 	try {
 		MyGL	myWindow(640, 480, "MyTitle");
+		font = new MyFont("Tahoma");
 
 		while (!myWindow.shouldClose()) {
 			myWindow.display();
