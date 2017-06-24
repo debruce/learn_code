@@ -24,6 +24,7 @@ struct MyGL : public BaseGL {
 	DoubleEntry*	zrot;
 	DoubleEntry*	near;
 	DoubleEntry*	far;
+	DoubleEntry*	angle;
 
 	MyGL(int width, int height, const std::string& title, MyFont* font) : BaseGL(width, height, title)
 	{
@@ -44,8 +45,12 @@ struct MyGL : public BaseGL {
 		far = new DoubleEntry(font, MyFont::UpperLeft, "far", 3, 1);
 		*far = 40;
 
+		angle = new DoubleEntry(font, MyFont::UpperLeft, "angle", 3, 1);
+		angle->setRange(0, 360, 1);
+		*angle = 0;
+
 		// useCursor(true);
-		// useScroll(true);
+		useScroll(true);
 	}
 
 	void draw()
@@ -62,7 +67,8 @@ struct MyGL : public BaseGL {
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		glTranslatef(0,0,-5);
-		glRotatef(t * 360.0, *xrot, *yrot, *zrot);
+		// glRotatef(t * 360.0, *xrot, *yrot, *zrot);
+		glRotatef(*angle, *xrot, *yrot, *zrot);
 
 			glColor4f(.25,.25,.25,1);
 			gluQuadricDrawStyle(sphere, GLU_FILL);
@@ -110,6 +116,12 @@ struct MyGL : public BaseGL {
 			glTranslatef(-aspect(), .6, 0);
 			glScalef(.1, .1, 1);
 			far->draw(this);
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(-aspect(), .5, 0);
+			glScalef(.1, .1, 1);
+			angle->draw(this);
 		glPopMatrix();
 
 		popOrtho();
@@ -189,6 +201,9 @@ struct MyGL : public BaseGL {
 	void scrollCallback(double x, double y)
 	{
 		cout << "scroll x=" << x << " y=" << y << endl;
+		angle->adjust(x);
+		// xrot->adjust(x);
+		// yrot->adjust(y);
 	}
 };
 

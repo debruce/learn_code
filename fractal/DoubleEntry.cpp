@@ -25,6 +25,18 @@ void DoubleEntry::moveRight()
 	if (updatePower < -fracWidth) updatePower = -fracWidth;
 }
 
+void DoubleEntry::rangeCorrect()
+{
+	if (doMod) {
+		if (val > maxVal) val = minVal;
+		else if (val < minVal) val = maxVal;
+	}
+	else {
+		if (val > maxVal) val = maxVal;
+		else if (val < minVal) val = minVal;
+	}
+}
+
 void DoubleEntry::setDigit(int d)
 {
 	bool	isNeg = false;
@@ -55,7 +67,22 @@ DoubleEntry::DoubleEntry(MyFont* font_, MyFont::Pos pos_, const string& lbl_, si
 	for (int i = 0; i < fracWidth; i++) n += '9';
 	n += '0';
 	maxVal = boost::lexical_cast<double>(n);
+	minVal = -maxVal;
+	doMod = false;
 	updatePower = 0;
+}
+
+void DoubleEntry::setRange(double mn_, double mx_, bool doMod_)
+{
+	minVal = mn_;
+	maxVal = mx_;
+	doMod = doMod_;
+}
+
+void DoubleEntry::adjust(double amount)
+{
+	val += amount * pow(10.0, updatePower);
+	rangeCorrect();
 }
 
 void DoubleEntry::operator=(double val_)
@@ -136,15 +163,14 @@ bool DoubleEntry::keyboardCallback(BaseGL& wind, int key, int scancode, int acti
 			break;
 		case GLFW_KEY_UP:
 			val += pow(10.0, updatePower);
-			if (val > maxVal) val = maxVal;
 			break;
 		case GLFW_KEY_DOWN:
 			val -= pow(10.0, updatePower);
-			if (val < -maxVal) val = -maxVal;
 			break;
 
 		default:
 			break;
 	}
+	rangeCorrect();
 	return true;
 }
