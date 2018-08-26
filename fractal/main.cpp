@@ -7,6 +7,7 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define GLFW_INCLUDE_GLU
 #include "BaseGL.h"
@@ -17,6 +18,8 @@
 using namespace std;
 
 typedef PickClass<BaseObj>	PickBaseObj;
+
+// glVertex3fv(glm::value_ptr(v));
 
 void drawAxis()
 {
@@ -30,6 +33,7 @@ void drawAxis()
 	glBegin(GL_TRIANGLE_STRIP);
 		for (int i = 0; i <= panels; i++) {
 			glNormal3f(0, cosf(i*p), sinf(i*p));
+			glm::vec3 v(len, cwidth*cosf(i*p), cwidth*sinf(i*p));
 			glVertex3f(len, cwidth*cosf(i*p), cwidth*sinf(i*p));
 			glVertex3f(-len, cwidth*cosf(i*p), cwidth*sinf(i*p));
 		}
